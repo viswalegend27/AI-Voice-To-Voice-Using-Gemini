@@ -4,8 +4,10 @@ from pathlib import Path
 from typing import AsyncIterator
 from fastapi import FastAPI, Response
 from fastapi.responses import StreamingResponse, PlainTextResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 
 app = FastAPI(title="Agent Controller")
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 PROJECT_DIR = Path(__file__).parent.resolve()
 INDEX_PATH = PROJECT_DIR / "./templates/index.html"
@@ -29,15 +31,19 @@ async def favicon():
 @app.post("/start")
 async def start_agent():
     global _agent_proc, _log_queue
+    # If agent is running return the text
     if _agent_proc and _agent_proc.poll() is None:
         return PlainTextResponse("Agent already running", 400)
-
+    
+    # This queue will collect log lines from the agent process for /logs
     _log_queue = asyncio.Queue()
 
     # Create a new process group so we can signal/kill the whole group later
     creationflags = subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0
     start_new_session = False if os.name == "nt" else True
-
+    
+    # Spawn the agent sub-process
+    # Start the agent.py in console mode
     _agent_proc = subprocess.Popen(
         AGENT_CMD,
         stdout=subprocess.PIPE,
@@ -73,6 +79,7 @@ async def _read_process_lines(proc: subprocess.Popen, queue: asyncio.Queue):
 @app.post("/stop")
 async def stop_agent():
     global _agent_proc, _log_queue
+    # To check agent is running
     if not _agent_proc or _agent_proc.poll() is not None:
         return PlainTextResponse("Agent is not running", 400)
 
@@ -81,11 +88,14 @@ async def stop_agent():
         # Graceful: signal the process group
         if os.name == "nt":
             try:
-                proc.send_signal(signal.CTRL_BREAK_EVENT)
+                # Ctrl + C Event
+                proc.send_signal(signal.CTRL_BREAK_EVENT) 
             except Exception:
                 proc.terminate()
         else:
             try:
+                # If first method do not work out Kill the page
+                # Done by getting the process group ID
                 os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
             except Exception:
                 proc.terminate()
@@ -120,7 +130,7 @@ async def stop_agent():
             except Exception:
                 pass
 
-
+# Browser connected to /log will not stop with one response
 @app.get("/logs")
 async def logs():
     global _log_queue
