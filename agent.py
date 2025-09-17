@@ -15,11 +15,11 @@ class Assistant(Agent):
     def __init__(self, stop_event) -> None:
         super().__init__(instructions=AGENT_CHARACTER)
         self.stop_event = stop_event
-
     
-    async def on_transcript(self, text: str, final: bool, participant=None):
-        if final and any(p in text.lower() for p in STOP_PHRASES):
-            self.stop_event.set()
+async def on_transcript(self, text: str, final: bool, participant=None):
+    if final and any(p in text.lower() for p in STOP_PHRASES):
+        self.stop_event.set()
+
 
 async def entrypoint(ctx: agents.JobContext):
     # Event the task is been grasped into stop_event
@@ -46,6 +46,7 @@ async def entrypoint(ctx: agents.JobContext):
             noise_cancellation=noise_cancellation.BVC()
         ),
     )
+    
     # Triggers the speech-to-speech flow (Gemini LLM → STT -> TTS → publish reply).
     await session.generate_reply(instructions=AGENT_RESPONSE_STYLE)
     # Use to stop the current output
@@ -55,4 +56,3 @@ async def entrypoint(ctx: agents.JobContext):
     
 if __name__ == "__main__":
     agents.cli.run_app(agents.WorkerOptions(entrypoint_fnc=entrypoint))
-    
