@@ -15,3 +15,5 @@ speechrecognition==3.8.1
 fastapi
 uvicorn
 python-dotenv
+livekit
+google-api-core
