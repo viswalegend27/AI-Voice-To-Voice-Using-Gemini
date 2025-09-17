@@ -1,6 +1,5 @@
 from dotenv import load_dotenv
 import os, asyncio
-from datetime import datetime
 from livekit import agents
 from livekit.agents import AgentSession, Agent, RoomInputOptions
 from livekit.plugins import noise_cancellation
