@@ -4,6 +4,8 @@ from livekit import agents
 from livekit.agents import AgentSession, Agent, RoomInputOptions
 from livekit.plugins import noise_cancellation
 from livekit.plugins.google.beta.realtime import RealtimeModel
+from prompt import AGENT_CHARACTER, AGENT_RESPONSE_STYLE
+
 
 load_dotenv()
 
@@ -11,7 +13,7 @@ load_dotenv()
 # Livekit does audio pipelining, VAD, STT, TTS
 class Assistant(Agent):
     def __init__(self) -> None:
-        super().__init__(instructions="You are a helpful voice AI assistant.")
+        super().__init__(instructions=AGENT_CHARACTER)
 
 
 async def entrypoint(ctx: agents.JobContext):
@@ -39,7 +41,7 @@ async def entrypoint(ctx: agents.JobContext):
     )
     # Triggers the speech-to-speech flow (Gemini LLM → STT -> TTS → publish reply).
     await session.generate_reply(
-        instructions="Greet the user and offer your assistance."
+        instructions=AGENT_RESPONSE_STYLE
     )    
     
 if __name__ == "__main__":
