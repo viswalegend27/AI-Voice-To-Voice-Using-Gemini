@@ -1,36 +1,56 @@
 from dotenv import load_dotenv
 import os, asyncio
+import logging
 from livekit import agents
 from livekit.agents import AgentSession, Agent, RoomInputOptions
 from livekit.plugins import noise_cancellation
 from livekit.plugins.google.beta.realtime import RealtimeModel
 from prompt import AGENT_CHARACTER, PROMPT_INSTRUCTIONS, STOP_PHRASES
+from tools import get_weather
 
 load_dotenv()
 
+# describing the agent's purpose
 class Assistant(Agent):
-    def __init__(self, stop_event) -> None:
-        super().__init__(instructions=AGENT_CHARACTER)
+    """
+    Agent subclass holding the stop event and transcript handler.
+    """
+
+    def __init__(self, stop_event: asyncio.Event) -> None:
+        super().__init__(
+            instructions=AGENT_CHARACTER,
+            llm=RealtimeModel(
+                model="gemini-2.0-flash-exp",
+                voice="Puck",
+                api_key=os.getenv("GOOGLE_API_KEY"),
+            ),
+            tools=[
+                get_weather,
+            ],
+        )
         self.stop_event = stop_event
 
-    async def on_transcript(self, text: str, final: bool, participant=None):
-        if final and any(p in text.lower() for p in STOP_PHRASES):
-            self.stop_event.set()
+
+# event handling using transcript functionality
+async def on_transcript(self, text: str, final: bool, participant=None):
+    """Set stop_event when a stop phrase appears in the final transcript."""
+    if final and any(p in text.lower() for p in STOP_PHRASES):
+        logging.info("Stop phrase detected. Triggering stop_event.")
+        self.stop_event.set()
 
 async def entrypoint(ctx: agents.JobContext):
+    # actual asynchronous process
     stop_event = asyncio.Event()
-    gemini_model = RealtimeModel(
-        model="gemini-2.0-flash-exp",
-        voice="Puck",
-        api_key=os.getenv("GOOGLE_API_KEY"),
-    )
 
-    session = AgentSession(llm=gemini_model)
+    # declaring livekit session
+    session = AgentSession()
+    # connecting to livekit session
     await ctx.connect()
 
+    # defining the the agent's way of answering
     instructions = PROMPT_INSTRUCTIONS
 
-
+    # session start in my live kit room
     await session.start(
         room=ctx.room,
         agent=Assistant(stop_event),
@@ -42,7 +62,9 @@ async def entrypoint(ctx: agents.JobContext):
 
     # wait for stop trigger (your current flow)
     await stop_event.wait()
+    # session stopped and wait for your command to continue
     await session.stop()
-
+    
+    # initial function call
 if __name__ == "__main__":
     agents.cli.run_app(agents.WorkerOptions(entrypoint_fnc=entrypoint))

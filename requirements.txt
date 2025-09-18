@@ -17,3 +17,5 @@ uvicorn
 python-dotenv
 livekit
 google-api-core
+langchain-community
+duckduckgo-search
