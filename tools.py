@@ -1,7 +1,6 @@
 import logging # used to log the information
 from livekit.agents import function_tool, RunContext
 import requests
-from langchain_community.tools import DuckDuckGoSearchRun
 
 @function_tool()
 async def get_weather(context: RunContext, city: str) -> str:
@@ -14,7 +13,7 @@ async def get_weather(context: RunContext, city: str) -> str:
         response = requests.get(url, timeout=5)
         
         # Raises error automatically if status code is 4xx/5xx
-        # Obtained as an JSON
+        # obtained as an unformated string
         response.raise_for_status()
         # Clean response text for logging/returning
         # Retriving only text
@@ -27,7 +26,7 @@ async def get_weather(context: RunContext, city: str) -> str:
         logging.error(f"Weather request failed for {city}: {e}") # logs the error in terminal
         return f"Could not retrieve weather for {city}."
       
-# tools.py
+# Function to get my date and time
 @function_tool()
 async def get_datetime(context: "RunContext", query: str = "full") -> str:
     """
@@ -47,11 +46,11 @@ async def get_datetime(context: "RunContext", query: str = "full") -> str:
         hour_24 = now.hour
         minute = now.minute
 
-        # Convert to 12-hour format
+        # converstion to 12-hour format
         hour_12 = hour_24 % 12 or 12
         am_pm = "AM" if hour_24 < 12 else "PM"
 
-        # Human-friendly part of the day
+        # saying the time of the day in casual format
         if 5 <= hour_24 < 12:
             part_of_day = "morning"
         elif 12 <= hour_24 < 17:
@@ -61,7 +60,7 @@ async def get_datetime(context: "RunContext", query: str = "full") -> str:
         else:
             part_of_day = "night"
 
-        # Prebuilt formats
+        # formated strings
         time_str = f"{hour_12}:{minute:02d} {am_pm} ({part_of_day})"
         date_str = now.strftime("%B %d, %Y")
         day_str = now.strftime("%A")
