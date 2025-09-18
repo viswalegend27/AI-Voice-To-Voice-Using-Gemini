@@ -5,8 +5,8 @@ from livekit import agents
 from livekit.agents import AgentSession, Agent, RoomInputOptions
 from livekit.plugins import noise_cancellation
 from livekit.plugins.google.beta.realtime import RealtimeModel
-from prompt import AGENT_CHARACTER, PROMPT_INSTRUCTIONS, STOP_PHRASES
-from tools import get_weather
+from prompt import AGENT_CHARACTER, AGENT_RESPONSE_STYLE, STOP_PHRASES
+from tools import get_weather, get_datetime
 
 load_dotenv()
 
@@ -26,6 +26,7 @@ class Assistant(Agent):
             ),
             tools=[
                 get_weather,
+                get_datetime,
             ],
         )
         self.stop_event = stop_event
@@ -48,7 +49,7 @@ async def entrypoint(ctx: agents.JobContext):
     await ctx.connect()
 
     # defining the the agent's way of answering
-    instructions = PROMPT_INSTRUCTIONS
+    instructions = AGENT_RESPONSE_STYLE
 
     # session start in my live kit room
     await session.start(
