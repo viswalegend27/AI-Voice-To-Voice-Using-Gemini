@@ -57,7 +57,7 @@ async def entrypoint(ctx: agents.JobContext):
         agent=Assistant(stop_event),
         room_input_options=RoomInputOptions(noise_cancellation=noise_cancellation.BVC()),
     )
-
+    
     # pass the enriched instruction to generate_reply
     await session.generate_reply(instructions=instructions)
 

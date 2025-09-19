@@ -20,22 +20,22 @@ async def get_weather(context: RunContext, city: str) -> str:
         weather = response.text.strip()
         logging.info(f"Weather for {city}: {weather}") # logging the information in terminal
         return weather
-
+    
     except requests.RequestException as e:
         # Handles all request-related errors (network, timeout, bad status)
         logging.error(f"Weather request failed for {city}: {e}") # logs the error in terminal
         return f"Could not retrieve weather for {city}."
-      
+    
 # Function to get my date and time
 @function_tool()
 async def get_datetime(context: "RunContext", query: str = "full") -> str:
     """
     Get a human-like response for current date and time.
     query options:
-      - "time" -> Returns time in 12-hour format with AM/PM and part of day.
-      - "date" -> Returns natural date format (e.g., September 18, 2025).
-      - "day"  -> Returns weekday name.
-      - "full" -> Returns full sentence with day, date, time.
+    - "time" -> Returns time in 12-hour format with AM/PM and part of day.
+    - "date" -> Returns natural date format (e.g., September 18, 2025).
+    - "day"  -> Returns weekday name.
+    - "full" -> Returns full sentence with day, date, time.
     """
     from datetime import datetime
     import logging
