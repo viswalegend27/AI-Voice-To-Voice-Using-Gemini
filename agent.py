@@ -1,22 +1,20 @@
 from dotenv import load_dotenv
 import os, asyncio
 import logging
+import json
 from livekit import agents
-from livekit.agents import AgentSession, Agent, RoomInputOptions
+from livekit.agents import AgentSession, Agent, RoomInputOptions, ChatContext
 from livekit.plugins import noise_cancellation
 from livekit.plugins.google.beta.realtime import RealtimeModel
 from prompt import AGENT_CHARACTER, AGENT_RESPONSE_STYLE, STOP_PHRASES
 from tools import get_weather, get_datetime
+from mem0 import AsyncMemoryClient
 
 load_dotenv()
 
 # describing the agent's purpose
 class Assistant(Agent):
-    """
-    Agent subclass holding the stop event and transcript handler.
-    """
-
-    def __init__(self, stop_event: asyncio.Event) -> None:
+    def __init__(self, stop_event: asyncio.Event, chat_ctx=None) -> None:
         super().__init__(
             instructions=AGENT_CHARACTER,
             llm=RealtimeModel(
@@ -28,9 +26,9 @@ class Assistant(Agent):
                 get_weather,
                 get_datetime,
             ],
+            chat_ctx=chat_ctx,
         )
         self.stop_event = stop_event
-
 
 # event handling using transcript functionality
 async def on_transcript(self, text: str, final: bool, participant=None):
@@ -43,30 +41,97 @@ async def entrypoint(ctx: agents.JobContext):
     # actual asynchronous process
     stop_event = asyncio.Event()
 
+    async def shutdown_hook(chat_ctx: ChatContext, mem0: AsyncMemoryClient, memory_str: str):
+        logging.info("Shutting down, saving chat context to memory...")
+
+        messages_formatted = [
+        ]
+
+        logging.info(f"Chat context messages: {chat_ctx.items}")
+
+        for item in chat_ctx.items:
+            content_str = ''.join(item.content) if isinstance(item.content, list) else str(item.content)
+            if memory_str and memory_str in content_str:
+                continue
+            if item.role in ['user', 'assistant']:
+                messages_formatted.append({
+                    "role": item.role,
+                    "content": content_str.strip()
+                })
+        logging.info(f"Formatted messages to add to memory: {messages_formatted}")
+
+        # async add
+        try:
+            await mem0.add(messages_formatted, user_id="Boss")
+            logging.info("Chat context saved to memory.")
+        except Exception as e:
+            logging.exception("Failed to save chat context to mem0: %s", e)
+
     # declaring livekit session
     session = AgentSession()
+
     # connecting to livekit session
     await ctx.connect()
+
+    # initializing our mem0 client (async) and passing api_key explicitly
+    mem0 = AsyncMemoryClient(api_key=os.getenv("MEM0_API_KEY"))
+
+    # giving our user a name
+    user_name = "Boss"
+
+    # retriving our memories from mem0 (async)
+    try:
+        results = await mem0.get_all(user_id=user_name)
+    except Exception as e:
+        logging.exception("mem0.get_all failed: %s", e)
+        results = []
+
+    initial_ctx = ChatContext()
+    memory_string = ''
+
+    if results:
+        memories = [
+            {
+                # only stack the relevant information from the mem0
+                "memory": result.get("memory"),
+                "updated_at": result.get("updated_at")
+            }
+            for result in results
+        ]
+        # return the array into string
+        memory_string = json.dumps(memories)
+        logging.info(f"Memories: {memory_string}")
+        initial_ctx.add_message(
+            role="assistant",
+            content=f"The user's name is {user_name}, and this is relvant context about him: {memory_string}."
+        )
 
     # defining the the agent's way of answering
     instructions = AGENT_RESPONSE_STYLE
 
     # session start in my live kit room
+    # create assistant instance so we can reference chat_ctx later
+    assistant = Assistant(stop_event, chat_ctx=initial_ctx)
+
     await session.start(
         room=ctx.room,
-        agent=Assistant(stop_event),
+        agent=assistant,
         room_input_options=RoomInputOptions(noise_cancellation=noise_cancellation.BVC()),
     )
-    
-    await session.say("Hello Boss, my connection is successful and audio is online.")
+
     # pass the enriched instruction to generate_reply
     await session.generate_reply(instructions=instructions)
 
     # wait for stop trigger (your current flow)
     await stop_event.wait()
-    # session stopped and wait for your command to continue
-    await session.stop()
-    
-    # initial function call
+    # ensure we always call the shutdown hook after stopping the session
+    try:
+        await session.stop()
+    finally:
+        # use the same ChatContext instance we passed in (it was mutated during the session)
+        await shutdown_hook(initial_ctx, mem0, memory_string)
+
+# initial function call
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     agents.cli.run_app(agents.WorkerOptions(entrypoint_fnc=entrypoint))

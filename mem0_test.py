@@ -1,28 +1,37 @@
-# mem0_test.py — clean & concise
-import os, json
+# mem0_test.py — function style
+import os, json, warnings, logging,time
 from dotenv import load_dotenv
 from mem0 import MemoryClient
-import warnings
 
 load_dotenv()
-client = MemoryClient(api_key=os.getenv("MEM0_API_KEY"))
-
-user_id = "Boss"
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
-messages = [
-    {"role": "user", "content": "Hi, I'm your Boss. I'm a software engineer and I love python."},
-    {"role": "assistant", "content": "Hello Boss! I'll remember your expertise and interests."}
-]
+user_name = "Boss"
+client = MemoryClient(api_key=os.getenv("MEM0_API_KEY"))
 
-# Add memory
-client.add(messages, user_id=user_id)
+def add_memory():
+    messages_formatted = [
+        {"role": "user", "content": "I really like Python Language."},
+        {"role": "assistant", "content": "That is a good choice to start with programming."},
+        {"role": "user", "content": "I think so too, Because several built libraries and simpler syntax."},
+        {"role": "assistant", "content": "What is your favorite feature ?"},
+    ]
+    client.add(messages_formatted, user_id=user_name)
 
-# Search memory
-query = f"What does {user_id} do for a living?"
-search_results = client.search(query, user_id=user_id)
-print("Search results:\n", json.dumps(search_results, indent=2, default=str))
+def get_memory_by_query():
+    query = f"What are {user_name}'s preferences?"
+    results = client.search(query, user_id=user_name)
 
-# Get all memories
-all_mems = client.get_all(user_id=user_id)
-print("\nAll memories:\n", json.dumps(all_mems, indent=2, default=str))
+    memories = [
+        {"memory": r.get("memory"), "updated_at": r.get("updated_at")}
+        for r in (results or [])
+    ]
+    memories_str = json.dumps(memories, indent=2, default=str)
+    print(f"\nMemories:\n{memories_str}")
+    return memories_str
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+    add_memory()
+    time.sleep(0.5)
+    get_memory_by_query()
