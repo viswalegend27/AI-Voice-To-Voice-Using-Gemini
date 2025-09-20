@@ -7,7 +7,7 @@ load_dotenv()
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 user_name = "Boss"
-client = MemoryClient(api_key=os.getenv("MEM0_API_KEY"))
+mem0 = MemoryClient()
 
 def add_memory():
     messages_formatted = [
@@ -16,11 +16,12 @@ def add_memory():
         {"role": "user", "content": "I think so too, Because several built libraries and simpler syntax."},
         {"role": "assistant", "content": "What is your favorite feature ?"},
     ]
-    client.add(messages_formatted, user_id=user_name)
+    mem0.add(messages_formatted, user_id=user_name)
 
 def get_memory_by_query():
+    mem0 = MemoryClient()
     query = f"What are {user_name}'s preferences?"
-    results = client.search(query, user_id=user_name)
+    results = mem0.search(query, user_id=user_name)
 
     memories = [
         {"memory": r.get("memory"), "updated_at": r.get("updated_at")}
@@ -32,6 +33,4 @@ def get_memory_by_query():
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
-    add_memory()
-    time.sleep(0.5)
     get_memory_by_query()
