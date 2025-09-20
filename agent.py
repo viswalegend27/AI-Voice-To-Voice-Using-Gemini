@@ -58,6 +58,7 @@ async def entrypoint(ctx: agents.JobContext):
         room_input_options=RoomInputOptions(noise_cancellation=noise_cancellation.BVC()),
     )
     
+    await session.say("Hello Boss, my connection is successful and audio is online.")
     # pass the enriched instruction to generate_reply
     await session.generate_reply(instructions=instructions)
 
