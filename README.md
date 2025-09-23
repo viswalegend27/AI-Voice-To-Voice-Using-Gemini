@@ -5,20 +5,6 @@ It provides tools, prompts, and an agent interface that can remember past intera
 
 ---
 
-## 📂 Project Structure
-
-.
-├── pycache/ # Python cache files
-├── .gitignore # Ignored files and folders
-├── agent.py # Main entry point for the AI agent
-├── mem0_test.py # Tests for mem0 integration
-├── prompt.py # System and assistant prompts configuration
-├── requirements.txt # Python dependencies
-└── tools.py # Utility functions and tools exposed to the agent
-
-
----
-
 ## ⚡ Features
 
 - **Persistent Memory (mem0):** Stores and retrieves contextual memory for the agent.  
